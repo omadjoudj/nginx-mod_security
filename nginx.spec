@@ -8,6 +8,8 @@
 %global  nginx_logdir        %{_localstatedir}/log/nginx
 %global  nginx_webroot       %{nginx_datadir}/html
 
+%global  modsec_version      2.7.7
+
 # gperftools exist only on selected arches
 %ifarch %{ix86} x86_64 ppc ppc64 %{arm}
 %global  with_gperftools     1
@@ -16,7 +18,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.4.5
-Release:           2%{?dist}
+Release:           2.modsec_%{modsec_version}%{dist}
 
 Summary:           A high performance web server and reverse proxy server
 Group:             System Environment/Daemons
@@ -27,6 +29,7 @@ URL:               http://nginx.org/
 
 Source0:           http://nginx.org/download/nginx-%{version}.tar.gz
 Source1:           http://nginx.org/download/nginx-%{version}.tar.gz.asc
+Source2:           https://www.modsecurity.org/tarball/%{modsec_version}/modsecurity-apache_%{modsec_version}.tar.gz
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -34,6 +37,7 @@ Source13:          nginx-upgrade
 Source14:          nginx-upgrade.8
 Source15:          nginx.init
 Source16:          nginx.sysconfig
+Source17:          mod_security.conf
 Source100:         index.html
 Source101:         poweredby.png
 Source102:         nginx-logo.png
@@ -55,6 +59,9 @@ BuildRequires:     pcre-devel
 BuildRequires:     perl-devel
 BuildRequires:     perl(ExtUtils::Embed)
 BuildRequires:     zlib-devel
+# Build reqs for mod_security
+BuildRequires:     httpd-devel libxml2-devel pcre-devel curl-devel lua-devel
+
 Requires:          GeoIP
 Requires:          gd
 Requires:          openssl
@@ -62,6 +69,9 @@ Requires:          pcre
 Requires:          perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 Requires(pre):     shadow-utils
 Provides:          webserver
+
+# So we can install rules from pkg 
+Provides: mod_security
 
 %if 0%{?fedora} >= 16
 BuildRequires:     systemd
@@ -81,11 +91,22 @@ memory usage.
 
 
 %prep
-%setup -q
+%setup -q -b 2
 %patch0 -p0
 
 
 %build
+
+# Build mod_security standalone module
+cd ../modsecurity-apache_%{modsec_version}
+CFLAGS="%{optflags} $(pcre-config --cflags)" ./configure \
+        --enable-standalone-module \
+        --enable-shared 
+make %{?_smp_mflags}
+
+# Build nginx with mod_security support
+cd ../%{name}-%{version}
+
 # nginx does not utilize a standard configure script.  It has its own
 # and the standard configure options cause the nginx configure script
 # to error out.  This is is also the reason for the DESTDIR environment
@@ -137,6 +158,7 @@ export DESTDIR=%{buildroot}
 %if 0%{?with_gperftools}
     --with-google_perftools_module \
 %endif
+    --add-module="../modsecurity-apache_%{modsec_version}/nginx/modsecurity" \
     --with-debug \
     --with-cc-opt="%{optflags} $(pcre-config --cflags)" \
     --with-ld-opt="$RPM_LD_FLAGS -Wl,-E" # so the perl module finds its symbols
@@ -172,12 +194,19 @@ install -p -d -m 0755 %{buildroot}%{nginx_webroot}
 
 install -p -m 0644 %{SOURCE12} \
     %{buildroot}%{nginx_confdir}
+
+%if 0%{?rhel}
+    sed -i 's|/run/nginx.pid|/var/run/nginx.pid|'  %{buildroot}%{nginx_confdir}/nginx.conf
+%endif
+
 install -p -m 0644 %{SOURCE100} \
     %{buildroot}%{nginx_webroot}
 install -p -m 0644 %{SOURCE101} %{SOURCE102} \
     %{buildroot}%{nginx_webroot}
 install -p -m 0644 %{SOURCE103} %{SOURCE104} \
     %{buildroot}%{nginx_webroot}
+install -p -m 0644 %{SOURCE17} \
+    %{buildroot}%{nginx_confdir}
 
 install -p -D -m 0644 %{_builddir}/nginx-%{version}/man/nginx.8 \
     %{buildroot}%{_mandir}/man8/nginx.8
@@ -252,6 +281,7 @@ fi
 %config(noreplace) %{nginx_confdir}/mime.types
 %config(noreplace) %{nginx_confdir}/mime.types.default
 %config(noreplace) %{nginx_confdir}/nginx.conf
+%config(noreplace) %{nginx_confdir}/mod_security.conf
 %config(noreplace) %{nginx_confdir}/nginx.conf.default
 %config(noreplace) %{nginx_confdir}/scgi_params
 %config(noreplace) %{nginx_confdir}/scgi_params.default
@@ -268,6 +298,9 @@ fi
 
 
 %changelog
+* Mon Feb 24 2014 Athmane Madjoudj <athmane@fedoraproject.org> 1.4.5-2.modsec_2.7.7
+- Add mod_security support for new nginx version
+
 * Sun Feb 16 2014 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.4.5-2
 - avoid multiple index directives (#1065488)
 
