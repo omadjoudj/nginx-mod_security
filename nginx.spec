@@ -301,11 +301,11 @@ fi
 * Wed Mar 05 2014 Athmane Madjoudj <athmane@fedoraproject.org> 1.4.6-2.modsec_2.7.7
 - Add mod_security support.
 
-* Mon Feb 24 2014 Athmane Madjoudj <athmane@fedoraproject.org> 1.4.5-2.modsec_2.7.7
-- Add mod_security support for new nginx version
-
 * Wed Mar 05 2014 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.4.6-1
 - update to upstream release 1.4.6
+
+* Mon Feb 24 2014 Athmane Madjoudj <athmane@fedoraproject.org> 1.4.5-2.modsec_2.7.7
+- Add mod_security support for new nginx version
 
 * Sun Feb 16 2014 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.4.5-2
 - avoid multiple index directives (#1065488)
