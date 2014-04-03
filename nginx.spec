@@ -8,7 +8,7 @@
 %global  nginx_logdir        %{_localstatedir}/log/nginx
 %global  nginx_webroot       %{nginx_datadir}/html
 
-%global  modsec_version      2.7.7
+%global  modsec_version      2.8.0
 
 # gperftools exist only on selected arches
 %ifarch %{ix86} x86_64 ppc ppc64 %{arm}
@@ -18,7 +18,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.4.7
-Release:           2.modsec_%{modsec_version}%{dist}
+Release:           3.modsec_%{modsec_version}%{dist}
 
 Summary:           A high performance web server and reverse proxy server
 Group:             System Environment/Daemons
@@ -29,7 +29,9 @@ URL:               http://nginx.org/
 
 Source0:           http://nginx.org/download/nginx-%{version}.tar.gz
 Source1:           http://nginx.org/download/nginx-%{version}.tar.gz.asc
-Source2:           https://www.modsecurity.org/tarball/%{modsec_version}/modsecurity-apache_%{modsec_version}.tar.gz
+# RC URL is different
+#Source2:           https://www.modsecurity.org/tarball/%{modsec_version}/modsecurity-apache_%{modsec_version}.tar.gz
+Source2:           modsecurity-apache_%{modsec_version}-RC1.tar.gz
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -98,7 +100,7 @@ memory usage.
 %build
 
 # Build mod_security standalone module
-cd ../modsecurity-apache_%{modsec_version}
+cd ../modsecurity-%{modsec_version}
 CFLAGS="%{optflags} $(pcre-config --cflags)" ./configure \
         --enable-standalone-module \
         --enable-shared 
@@ -158,7 +160,7 @@ export DESTDIR=%{buildroot}
 %if 0%{?with_gperftools}
     --with-google_perftools_module \
 %endif
-    --add-module="../modsecurity-apache_%{modsec_version}/nginx/modsecurity" \
+    --add-module="../modsecurity-%{modsec_version}/nginx/modsecurity" \
     --with-debug \
     --with-cc-opt="%{optflags} $(pcre-config --cflags)" \
     --with-ld-opt="$RPM_LD_FLAGS -Wl,-E" # so the perl module finds its symbols
@@ -298,6 +300,9 @@ fi
 
 
 %changelog
+* Thu Apr 03 2014 Athmane Madjoudj <athmane@fedoraproject.org>  1.4.7-3.modsec_2.8.0
+- Update mod_security to 2.8.0-RC1
+
 * Sun Mar 30 2014 Athmane Madjoudj <athmane@fedoraproject.org>  1.4.7-2.modsec_2.7.7
 - Update to 1.4.7 + mod_security
 
